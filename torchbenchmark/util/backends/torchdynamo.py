@@ -58,6 +58,16 @@ def parse_torchdynamo_args(model: 'torchbenchmark.util.model.BenchmarkModel', dy
         action='store_true',
         help="enable quantize for inducotr",
     )
+    parser.add_argument(
+        "--PTQ",
+        action='store_true',
+        help="enable PTQ Quantization",
+    )
+    parser.add_argument(
+        "--cpp_wrapper",
+        action='store_true',
+        help="enable cpp_wrapper",
+    )
     args, extra_args = parser.parse_known_args(dynamo_args)
     return args, extra_args
 
@@ -80,7 +90,7 @@ def apply_torchdynamo_args(model: 'torchbenchmark.util.model.BenchmarkModel', ar
         if model.device == "cuda":
             torchinductor.config.triton.cudagraphs = bool(args.torchinductor_cudagraph)
         if model.device == "cpu" and model.test == "eval" and args.quantize:
-            enable_inductor_quant(model)
+            enable_inductor_quant(model, args)
         # Setup torchinductor.config.triton.mm
         if args.tritonmm == "triton":
             torchinductor.config.triton.mm = "triton"
@@ -128,21 +138,32 @@ def apply_torchdynamo_args(model: 'torchbenchmark.util.model.BenchmarkModel', ar
 
     torchdynamo.reset()
 
-def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel'):
+def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', args: argparse.Namespace):
     import copy
     from torch.ao.quantization.quantize_pt2e import prepare_pt2e, convert_pt2e
     import torch.ao.quantization.quantizer.x86_inductor_quantizer as xiq
     from torch.ao.quantization.quantizer.x86_inductor_quantizer import X86InductorQuantizer
+    if args.PTQ:
+        from torch._export import capture_pre_autograd_graph, dynamic_dim
     module, example_inputs = model.get_module()
     # Generate the FX Module
-    exported_model, guards = torchdynamo.export(
-            module,
-            *copy.deepcopy(example_inputs),
-            aten_graph=True,
-        )
+    if args.PTQ:
+        exported_model = capture_pre_autograd_graph(
+                module,
+                example_inputs
+            )
+    else:
+         exported_model, guards = torchdynamo.export(
+                 module,
+                 *copy.deepcopy(example_inputs),
+                 aten_graph=True,
+             )
+
     # Create X86InductorQuantizer
     quantizer = X86InductorQuantizer()
     quantizer.set_global(xiq.get_default_x86_inductor_quantization_config())
+    if args.cpp_wrapper:
+        torch._inductor.config.cpp_wrapper = True
     # PT2E Quantization flow
     prepared_model = prepare_pt2e(exported_model, quantizer)
     # Calibration
