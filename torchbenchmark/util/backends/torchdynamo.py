@@ -149,7 +149,7 @@ def apply_torchdynamo_args(model: 'torchbenchmark.util.model.BenchmarkModel', ar
 def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_qat: 'bool'=False, is_dynamic: 'bool'=False):
     from torch.ao.quantization.quantize_pt2e import prepare_pt2e, prepare_qat_pt2e, convert_pt2e
     import torch.ao.quantization.quantizer.x86_inductor_quantizer as xiq
-    from torch._export import capture_pre_autograd_graph
+    from torch.export import export
     module, example_inputs = model.get_module()
     # Create X86InductorQuantizer
     quantizer = xiq.X86InductorQuantizer()
@@ -157,7 +157,7 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
     if is_qat:
         module.train()
     # Generate the FX Module
-    exported_model = capture_pre_autograd_graph(
+    exported_model: torch.export.ExportedProgram = export(
             module,
             example_inputs
         )
