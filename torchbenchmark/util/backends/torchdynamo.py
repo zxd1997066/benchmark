@@ -265,7 +265,6 @@ def apply_torchdynamo_args(
 def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_qat: 'bool'=False):
     from torch.ao.quantization.quantize_pt2e import prepare_pt2e, prepare_qat_pt2e, convert_pt2e
     import torch.ao.quantization.quantizer.x86_inductor_quantizer as xiq
-    from torch._export import capture_pre_autograd_graph
     from torch.export import Dim
     module, example_inputs = model.get_module()
 
@@ -294,17 +293,17 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
         example_inputs = {
             "input_ids": input_ids,
         }
-        exported_model = capture_pre_autograd_graph(
+        exported_model = torch.export.export_for_training(
             module,
             (),
             example_inputs,
             dynamic_shapes=dynamic_shapes,
-        )
+        ).module()
     else:
-        exported_model = capture_pre_autograd_graph(
+        exported_model = torch.export.export_for_training(
             module,
             example_inputs,
-        )
+        ).module()
     # PT2E Quantization flow
     prepared_model = prepare_qat_pt2e(exported_model, quantizer) if is_qat else prepare_pt2e(exported_model, quantizer)
     # Calibration
