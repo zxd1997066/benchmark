@@ -159,7 +159,8 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
     # Generate the FX Module
     exported_model = torch.export.export_for_training(
             module,
-            example_inputs
+            example_inputs,
+            strict=True
         ).module()
     # PT2E Quantization flow
     prepared_model = prepare_qat_pt2e(exported_model, quantizer) if is_qat else prepare_pt2e(exported_model, quantizer)
