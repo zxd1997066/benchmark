@@ -354,11 +354,13 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
             (),
             example_inputs,
             dynamic_shapes=dynamic_shapes,
+            strict=True
         ).module()
     else:
         exported_model = export_for_training(
             module,
             example_inputs,
+            strict=True
         ).module()
 
     for name, buffer in exported_model.named_buffers():
