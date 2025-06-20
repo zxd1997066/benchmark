@@ -37,7 +37,7 @@ def check_precision(
     if precision == "bypass":
         return True
     if precision == "fp16":
-        return model.device == "cuda" and hasattr(model, "enable_fp16")
+        return model.device in ["cuda", "xpu"] and hasattr(model, "enable_fp16")
     if precision == "tf32":
         return model.device == "cuda"
     if precision == "amp":
@@ -47,12 +47,12 @@ def check_precision(
     if precision == "bf16":
         return True
     if precision == "amp_fp16":
-        if model.test == "eval" and model.device == "cuda":
+        if model.test == "eval" and model.device in ["cuda", "xpu"]:
             return True
-        if model.test == "train" and model.device == "cuda":
+        if model.test == "train" and model.device in ["cuda", "xpu"]:
             return hasattr(model, "enable_amp") or is_staged_train_test(model)
     if precision == "amp_bf16":
-        if model.test == "eval" and model.device == "cpu":
+        if model.test == "eval" and model.device in ["cpu", "xpu"]:
             return True
         if model.test == "train" and model.device == "cpu":
             return hasattr(model, "enable_amp") or is_staged_train_test(model)
