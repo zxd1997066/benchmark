@@ -316,13 +316,12 @@ def get_xpu_inductor_symm_quantization_config():
     )
     return quantization_config
 
-def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_qat: 'bool'=False, dtype):
+def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_qat: 'bool'=False, dtype: str="float32"):
     from torch.ao.quantization.quantize_pt2e import prepare_pt2e, prepare_qat_pt2e, convert_pt2e
     import torch.ao.quantization.quantizer.xpu_inductor_quantizer as xiq
     from torch.export import Dim, export_for_training
     if dtype != "float32":
         torch_dtype = getattr(torch, dtype)
-        x = x.to(torch_dtype)
         model = model.to(torch_dtype)
     module, example_inputs = model.get_module()
     torch._inductor.config.freezing = True
