@@ -322,7 +322,8 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
     from torch.export import Dim, export_for_training
     if dtype != "float32":
         torch_dtype = getattr(torch, dtype)
-        model = model.to(torch_dtype)
+        model.model = model.model.to(torch_dtype)
+        model.example_inputs = tuple(x.to(torch_dtype) for x in model.example_inputs)
     module, example_inputs = model.get_module()
     torch._inductor.config.freezing = True
 
