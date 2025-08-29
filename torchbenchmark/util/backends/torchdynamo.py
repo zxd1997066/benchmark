@@ -99,6 +99,11 @@ def parse_torchdynamo_args(dynamo_args: List[str]) -> argparse.Namespace:
         help="Apply quantization to the model before running it",
     )
     parser.add_argument(
+        "--dtype",
+        default="float32",
+        help="Data type for pt2e, such as: float32,float16",
+    )
+    parser.add_argument(
         "--torchinductor_compile_threads",
         type=int,
         help="""
@@ -219,7 +224,7 @@ def apply_torchdynamo_args(
                     change_linear_weights_to_int4_woqtensors(module)
             elif (model.device == "cpu" or model.device == "xpu") and model.test == "eval":
                 if args.quantization == "pt2e":
-                    enable_inductor_quant(model, args.is_qat)
+                    enable_inductor_quant(model, args.is_qat, args.dtype)
                 elif args.quantization == "auto_quant":
                     from torchao.quantization import quantize_, int8_dynamic_activation_int8_weight, int8_weight_only
                     module, example_inputs = model.get_module()
@@ -311,10 +316,14 @@ def get_xpu_inductor_symm_quantization_config():
     )
     return quantization_config
 
-def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_qat: 'bool'=False):
+def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_qat: 'bool'=False, dtype: str="float32"):
     from torch.ao.quantization.quantize_pt2e import prepare_pt2e, prepare_qat_pt2e, convert_pt2e
     import torch.ao.quantization.quantizer.xpu_inductor_quantizer as xiq
     from torch.export import Dim, export_for_training
+    if dtype != "float32":
+        torch_dtype = getattr(torch, dtype)
+        model.model = model.model.to(torch_dtype)
+        model.example_inputs = tuple(x.to(torch_dtype) for x in model.example_inputs)
     module, example_inputs = model.get_module()
     torch._inductor.config.freezing = True
 
