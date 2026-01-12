@@ -11,12 +11,13 @@ import warnings
 from typing import List
 
 import torch
+import torchao
 import torchbenchmark
 from torchbenchmark.util.model import is_staged_train_test
 
-from torch.ao.quantization.observer import HistogramObserver, PerChannelMinMaxObserver
-from torch.ao.quantization.quantizer.quantizer import QuantizationSpec
-from torch.ao.quantization.quantizer.xnnpack_quantizer_utils import QuantizationConfig
+from torchao.quantization.pt2e.observer import HistogramObserver, PerChannelMinMaxObserver
+from torchao.quantization.pt2e.quantizer import QuantizationSpec
+from torchao.testing.pt2e._xnnpack_quantizer_utils import QuantizationConfig
 from typing import Any, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from torch.ao.quantization.qconfig import _ObserverOrFakeQuantizeConstructor
@@ -312,9 +313,9 @@ def get_xpu_inductor_symm_quantization_config():
     return quantization_config
 
 def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_qat: 'bool'=False):
-    from torch.ao.quantization.quantize_pt2e import prepare_pt2e, prepare_qat_pt2e, convert_pt2e
-    import torch.ao.quantization.quantizer.xpu_inductor_quantizer as xiq
-    from torch.export import Dim, export_for_training
+    from torchao.quantization.pt2e.quantize_pt2e import prepare_pt2e, prepare_qat_pt2e, convert_pt2e
+    import torchao.quantization.pt2e.quantizer.xpu_inductor_quantizer as xiq
+    from torch.export import Dim, export
     module, example_inputs = model.get_module()
     torch._inductor.config.freezing = True
 
@@ -349,7 +350,7 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
         example_inputs = {
             "input_ids": input_ids,
         }
-        exported_model = export_for_training(
+        exported_model = export(
             module,
             (),
             example_inputs,
@@ -357,7 +358,7 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
             strict=True
         ).module()
     else:
-        exported_model = export_for_training(
+        exported_model = export(
             module,
             example_inputs,
             strict=True
@@ -381,5 +382,5 @@ def enable_inductor_quant(model: 'torchbenchmark.util.model.BenchmarkModel', is_
             prepared_model(*example_inputs)
     with torch.no_grad():
         converted_model = convert_pt2e(prepared_model)
-        torch.ao.quantization.move_exported_model_to_eval(converted_model)
+        torchao.quantization.pt2e.move_exported_model_to_eval(converted_model)
         model.set_module(converted_model)
